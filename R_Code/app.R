@@ -232,7 +232,7 @@ server <- function(input, output, session) {
         additional 11 NHS England early intervention services, throughout 
         April 2006-February 2009."
         , ylab = "",xlab = "",cex.main = 2, col.main = "black")
-    text(x = 1, y=0.5, "Developed in collaboration between the Institute of\nMental Health & Wellbeing, University of Glasgow &\nInstitute of Mental Health, University of Birmingham\nby Dr Samuel Leighton and Dr Pavan Mallikarjun.", cex = 1.5)
+    text(x = 1, y=0.5, "Developed in collaboration between the Institute of\nMental Health & Wellbeing, University of Glasgow &\nInstitute for Mental Health, University of Birmingham\nby Dr Samuel Leighton and Dr Pavan Mallikarjun.", cex = 1.5)
   })
   
   observeEvent(input$BL_GAF_Symptoms, {
@@ -272,7 +272,7 @@ server <- function(input, output, session) {
         additional 11 NHS England early intervention services, throughout 
         April 2006-February 2009."
              , ylab = "",xlab = "",cex.main = 2, col.main = "black")
-        text(x = 1, y=0.5, "Developed in collaboration between the Institute of\nMental Health & Wellbeing, University of Glasgow &\nInstitute of Mental Health, University of Birmingham\nby Dr Samuel Leighton and Dr Pavan Mallikarjun.", cex = 1.5)
+        text(x = 1, y=0.5, "Developed in collaboration between the Institute of\nMental Health & Wellbeing, University of Glasgow &\nInstitute for Mental Health, University of Birmingham\nby Dr Samuel Leighton and Dr Pavan Mallikarjun.", cex = 1.5)
       })
   })
 

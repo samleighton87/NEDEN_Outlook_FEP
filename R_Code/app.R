@@ -184,23 +184,39 @@ ui <- fluidPage(
   sidebarLayout(sidebarPanel(
     h2("Enter Baseline Variables (if known):"),
     br(),
+    selectInput("Sex.Male","Sex at Birth",
+                choices = list(" " = -1,"Female" = 0, "Male" = 1), selected = -1),
+    selectInput("BL_Paid_Employ.Yes","In Paid Employment",
+                choices = list(" " = -1,"No" = 0, "Yes" = 1), selected = -1),
     selectInput("Qualification_Level_Ordinal","Highest Qualification Level",
                 choices = list(" " = -1,"None" = 0, "GCSE/NVQ level 1 or 2" = 1,
                                "A-level/GNVQ/BTEC/NVQ level 3" = 2,
                                "Degree/HND/NVQ level 4 or above" = 3), selected = -1),
     numericInput("ADJ_DUP","Duration of Untreated Psychosis (days)", value = NA),
+    selectInput("Client_Adaption_School_Childhood","PAS Childhood - Adaption to School",
+                choices = list(" " = -1,"0 - Good, enjoys school, rare problems, has friends & likes teachers" = 0, "1" = 1,"2" = 2,"3" = 3,"4" = 4, "5" = 5, "6 - Refuses school, delinquency or vandalism against school"=6), selected = -1),
     selectInput("Client_Sociability_Withdrawal_Late_Adolescence","PAS Late Adolescence - Sociability & Withdrawal",
                 choices = list(" " = -1,"0 - Not withdrawn" = 0, "1" = 1,"2" = 2,"3" = 3,"4" = 4, "5" = 5, "6 - Withdrawn & isolated"=6), selected = -1),
+    selectInput("Client_Employed_At_School","PAS General - Employed / At School in previous 3 years",
+                choices = list(" " = -1 ,"0 - All the time" = 0, "1" = 1,"2" = 2,"3" = 3,"4" = 4, "5" = 5, "6 - Never"=6), selected = -1),
+    selectInput("Client_Job_Change_Interrupted_School_Attendance","PAS General - Job Change / Interrupted School Attendance in previous 3 years",
+                choices = list(" " = -1 ,"0 - Not affected" = 0, "1" = 1,"2" = 2,"3" = 3,"4" = 4, "5" = 5, "6 - Less than 2 weeks in school or job"=6), selected = -1),
     selectInput("Client_Highest_Functioning_Achieved_Life","PAS General - Degree of Interest in Life",
                 choices = list(" " = -1,"0 - Fully able to function" = 0, "1" = 1,"2" = 2,"3" = 3,"4" = 4, "5" = 5, "6 - Unable to function"=6), selected = -1),
     selectInput("Client_Energy_Level","PAS General - Energy Level",
                 choices = list(" " = -1 ,"0 - Strong drive, keen, active, alert" = 0, "1" = 1,"2" = 2,"3" = 3,"4" = 4, "5" = 5, "6 - Submissive, inadequate, passive"=6), selected = -1),
+    selectInput("BL_PANSS_P2_Conceptual_Disorganization","PANSS P2 - Conceptual Disorganisation",
+                choices = list(" " = -1, "1 - Absent" = 1,"2"= 2,"3" = 3,"4" = 4, "5" = 5,"6"=6, "7 - Extreme"=7), selected = -1),
     selectInput("BL_PANSS_P3_Hallucinatory_Behaviour","PANSS P3 - Hallucinatory Behaviour",
                 choices = list(" " = -1, "1 - Absent" = 1,"2"= 2,"3" = 3,"4" = 4, "5" = 5,"6"=6, "7 - Extreme"=7), selected = -1),
-    selectInput("BL_PANSS_N4_Passive_Social_Withdrawal","PANSS P4 - Passive Social Withdrawal",
+    selectInput("BL_PANSS_P4_Excitement","PANSS P4 - Excitement",
+                choices = list(" " = -1, "1 - Absent" = 1,"2"= 2,"3" = 3,"4" = 4, "5" = 5,"6"=6, "7 - Extreme"=7), selected = -1),
+    selectInput("BL_PANSS_N4_Passive_Social_Withdrawal","PANSS N4 - Passive Social Withdrawal",
                 choices = list(" " = -1, "1 - Absent" = 1,"2"= 2,"3" = 3,"4" = 4, "5" = 5,"6"=6, "7 - Extreme"=7), selected = -1),
     selectInput("BL_PANSS_G9_Unusual_Thought_Content","PANSS G9 - Unusual Thought Content",
                 choices = list(" " = -1, "1 - Absent" = 1,"2"= 2,"3" = 3,"4" = 4, "5" = 5,"6"=6, "7 - Extreme"=7), selected = -1),
+    selectInput("CDSS_Suicide","Calgary Depression Scale - Suicide",
+                choices = list(" " = -1,"0 - Absent" = 0,"1 - Mild (frequent thoughts)" = 1,"2 - Moderate (planning suicide, no attempt)" = 2,"3 - Severe (attempt designed to end life)" = 3), selected = -1),
     selectInput("YMRS_Appearance","YMRS - Appearance",
                 choices = list(" " = -1,"0 - Appropriate dress & grooming" = 0,"1" = 1,"2" = 2,"3" = 3,"4 - Completely unkempt, decorated, bizarre garb" = 4), selected = -1),
     selectInput("IS_Not_Due_Illness","Insight Scale - None of the unusual things I experienced are due to an illness",
@@ -219,7 +235,7 @@ ui <- fluidPage(
 server <- function(input, output, session) {
 
   output$probNoRemission = renderPlot({
-    plot(0,type='n',axes=FALSE, main="Welcome to the First Episode Psychosis\nNon-Remission Calculator v0.0.2 (25/11/19)", 
+    plot(0,type='n',axes=FALSE, main="FEP Non-Remission Calculator v0.2.1 (06/01/20)\nNOT FOR CLINICAL USE", 
     sub="We used data from the National Evaluation of Development of Early 
           intervention Network study (NEDEN) for model development and 
           internal-external validation. NEDEN is a longitudinal naturalistic 
@@ -246,20 +262,28 @@ server <- function(input, output, session) {
   })
   
   observeEvent(input$resetButton, {
-      updateSelectInput(session = session, inputId = "Qualification_Level_Ordinal",selected = -1)
+      updateSelectInput(session = session, inputId = "Sex.Male", selected = -1)
+      updateSelectInput(session = session, inputId = "BL_Paid_Employ.Yes", selected = -1)
+      updateSelectInput(session = session, inputId = "Qualification_Level_Ordinal", selected = -1)
       updateNumericInput(session = session, inputId = "ADJ_DUP", value = NA)
-      updateSelectInput(session = session, inputId = "Client_Sociability_Withdrawal_Late_Adolescence",selected = -1)
-      updateSelectInput(session = session, inputId = "Client_Highest_Functioning_Achieved_Life",selected = -1)
-      updateSelectInput(session = session, inputId = "Client_Energy_Level",selected = -1) 
-      updateSelectInput(session = session, inputId = "BL_PANSS_P3_Hallucinatory_Behaviour",selected = -1)
-      updateSelectInput(session = session, inputId = "BL_PANSS_N4_Passive_Social_Withdrawal",selected = -1)
-      updateSelectInput(session = session, inputId = "BL_PANSS_G9_Unusual_Thought_Content",selected = -1)
-      updateSelectInput(session = session, inputId = "YMRS_Appearance",selected = -1)
-      updateSelectInput(session = session, inputId = "IS_Not_Due_Illness",selected = -1)
-      updateNumericInput(session = session, inputId = "BL_GAF_Symptoms",value = NA)
-      updateTextInput(session = session, inputId = "PostCodeToDep",value = " ")
+      updateSelectInput(session = session, inputId = "Client_Adaption_School_Childhood", selected = -1)
+      updateSelectInput(session = session, inputId = "Client_Sociability_Withdrawal_Late_Adolescence", selected = -1)
+      updateSelectInput(session = session, inputId = "Client_Employed_At_School", selected = -1)
+      updateSelectInput(session = session, inputId = "Client_Job_Change_Interrupted_School_Attendance", selected = -1)
+      updateSelectInput(session = session, inputId = "Client_Highest_Functioning_Achieved_Life", selected = -1)
+      updateSelectInput(session = session, inputId = "Client_Energy_Level",selected = -1)
+      updateSelectInput(session = session, inputId = "BL_PANSS_P2_Conceptual_Disorganization", selected = -1)
+      updateSelectInput(session = session, inputId = "BL_PANSS_P3_Hallucinatory_Behaviour", selected = -1)
+      updateSelectInput(session = session, inputId = "BL_PANSS_P4_Excitement", selected = -1)
+      updateSelectInput(session = session, inputId = "BL_PANSS_N4_Passive_Social_Withdrawal", selected = -1)
+      updateSelectInput(session = session, inputId = "BL_PANSS_G9_Unusual_Thought_Content", selected = -1)
+      updateSelectInput(session = session, inputId = "CDSS_Suicide", selected = -1)
+      updateSelectInput(session = session, inputId = "YMRS_Appearance", selected = -1)
+      updateSelectInput(session = session, inputId = "IS_Not_Due_Illness", selected = -1)
+      updateNumericInput(session = session, inputId = "BL_GAF_Symptoms", value = NA)
+      updateTextInput(session = session, inputId = "PostCodeToDep", value = " ")
       output$probNoRemission = renderPlot({
-        plot(0,type='n',axes=FALSE, main="Welcome to the First Episode Psychosis\nNon-Remission Calculator v0.0.2 (25/11/19)", 
+        plot(0,type='n', axes=FALSE, main="FEP Non-Remission Calculator v0.2.1 (06/01/20)\nNOT FOR CLINICAL USE", 
              sub="We used data from the National Evaluation of Development of Early 
           intervention Network study (NEDEN) for model development and 
           internal-external validation. NEDEN is a longitudinal naturalistic 
@@ -289,6 +313,22 @@ server <- function(input, output, session) {
       
       PCT_Local_Concentration_2007 = getCCGFromPostcode(input$PostCodeToDep, ccg_local_conc_2019)
       
+      if(input$Sex.Male == -1)
+      {
+        Sex.Male = NA
+      }else
+      {
+        Sex.Male = input$Sex.Male
+      }
+      
+      if(input$BL_Paid_Employ.Yes == -1)
+      {
+        BL_Paid_Employ.Yes = NA
+      }else
+      {
+        BL_Paid_Employ.Yes = input$BL_Paid_Employ.Yes
+      }
+      
       if(input$Qualification_Level_Ordinal == -1)
       {
         Qualification_Level_Ordinal = NA
@@ -297,12 +337,36 @@ server <- function(input, output, session) {
         Qualification_Level_Ordinal = input$Qualification_Level_Ordinal
       }
       
+      if(input$Client_Adaption_School_Childhood == -1)
+      {
+        Client_Adaption_School_Childhood = NA
+      }else
+      {
+        Client_Adaption_School_Childhood = input$Client_Adaption_School_Childhood
+      }
+      
       if(input$Client_Sociability_Withdrawal_Late_Adolescence == -1)
       {
         Client_Sociability_Withdrawal_Late_Adolescence = NA
       }else
       {
         Client_Sociability_Withdrawal_Late_Adolescence = input$Client_Sociability_Withdrawal_Late_Adolescence
+      }
+      
+      if(input$Client_Employed_At_School == -1)
+      {
+        Client_Employed_At_School = NA
+      }else
+      {
+        Client_Employed_At_School = input$Client_Employed_At_School
+      }
+      
+      if(input$Client_Job_Change_Interrupted_School_Attendance == -1)
+      {
+        Client_Job_Change_Interrupted_School_Attendance = NA
+      }else
+      {
+        Client_Job_Change_Interrupted_School_Attendance = input$Client_Job_Change_Interrupted_School_Attendance
       }
       
       if(input$Client_Highest_Functioning_Achieved_Life == -1)
@@ -321,12 +385,28 @@ server <- function(input, output, session) {
         Client_Energy_Level = input$Client_Energy_Level
       }
       
+      if(input$BL_PANSS_P2_Conceptual_Disorganization == -1)
+      {
+        BL_PANSS_P2_Conceptual_Disorganization = NA
+      }else
+      {
+        BL_PANSS_P2_Conceptual_Disorganization = input$BL_PANSS_P2_Conceptual_Disorganization
+      }
+      
       if(input$BL_PANSS_P3_Hallucinatory_Behaviour == -1)
       {
         BL_PANSS_P3_Hallucinatory_Behaviour = NA
       }else
       {
         BL_PANSS_P3_Hallucinatory_Behaviour = input$BL_PANSS_P3_Hallucinatory_Behaviour
+      }
+      
+      if(input$BL_PANSS_P3_Hallucinatory_Behaviour == -1)
+      {
+        BL_PANSS_P4_Excitement = NA
+      }else
+      {
+        BL_PANSS_P4_Excitement = input$BL_PANSS_P4_Excitement
       }
       
       if(input$BL_PANSS_N4_Passive_Social_Withdrawal == -1)
@@ -345,6 +425,14 @@ server <- function(input, output, session) {
         BL_PANSS_G9_Unusual_Thought_Content = input$BL_PANSS_G9_Unusual_Thought_Content
       }
       
+      if(input$CDSS_Suicide == -1)
+      {
+        CDSS_Suicide = NA
+      }else
+      {
+        CDSS_Suicide = input$CDSS_Suicide
+      }
+      
       if(input$YMRS_Appearance == -1)
       {
         YMRS_Appearance = NA
@@ -361,16 +449,27 @@ server <- function(input, output, session) {
         IS_Not_Due_Illness = input$IS_Not_Due_Illness
       }
       
-      print(paste(Qualification_Level_Ordinal,input$ADJ_DUP,Client_Sociability_Withdrawal_Late_Adolescence,Client_Highest_Functioning_Achieved_Life,
-            Client_Energy_Level,BL_PANSS_P3_Hallucinatory_Behaviour,YMRS_Appearance,IS_Not_Due_Illness,input$BL_GAF_Symptoms,PCT_Local_Concentration_2007$DepZScore))
-      x = data.frame("Qualification_Level_Ordinal" = as.numeric(Qualification_Level_Ordinal), 
-                     "ADJ_DUP" = as.numeric(input$ADJ_DUP), 
+      print(paste(Sex.Male,BL_Paid_Employ.Yes,Qualification_Level_Ordinal,input$ADJ_DUP,Client_Adaption_School_Childhood,Client_Sociability_Withdrawal_Late_Adolescence,
+                  Client_Employed_At_School,Client_Job_Change_Interrupted_School_Attendance,Client_Highest_Functioning_Achieved_Life,
+            Client_Energy_Level,BL_PANSS_P2_Conceptual_Disorganization,BL_PANSS_P3_Hallucinatory_Behaviour,BL_PANSS_P4_Excitement,
+            BL_PANSS_N4_Passive_Social_Withdrawal,BL_PANSS_G9_Unusual_Thought_Content,CDSS_Suicide,YMRS_Appearance,IS_Not_Due_Illness,input$BL_GAF_Symptoms,PCT_Local_Concentration_2007$DepZScore))
+      ##
+      x = data.frame("Sex.Male" = as.numeric(Sex.Male),
+                     "BL_Paid_Employ.Yes" = as.numeric(BL_Paid_Employ.Yes),
+                     "Qualification_Level_Ordinal" = as.numeric(Qualification_Level_Ordinal), 
+                     "ADJ_DUP" = as.numeric(input$ADJ_DUP),
+                     "Client_Adaption_School_Childhood" = as.numeric(Client_Adaption_School_Childhood),
                      "Client_Sociability_Withdrawal_Late_Adolescence" = as.numeric(Client_Sociability_Withdrawal_Late_Adolescence),
+                     "Client_Employed_At_School" = as.numeric(Client_Employed_At_School),
+                     "Client_Job_Change_Interrupted_School_Attendance" = as.numeric(Client_Job_Change_Interrupted_School_Attendance),
                      "Client_Highest_Functioning_Achieved_Life" = as.numeric(Client_Highest_Functioning_Achieved_Life),
                      "Client_Energy_Level" = as.numeric(Client_Energy_Level),
+                     "BL_PANSS_P2_Conceptual_Disorganization" = as.numeric(BL_PANSS_P2_Conceptual_Disorganization),
                      "BL_PANSS_P3_Hallucinatory_Behaviour" = as.numeric(BL_PANSS_P3_Hallucinatory_Behaviour),
+                     "BL_PANSS_P4_Excitement" = as.numeric(BL_PANSS_P4_Excitement),
                      "BL_PANSS_N4_Passive_Social_Withdrawal" = as.numeric(BL_PANSS_N4_Passive_Social_Withdrawal),
                      "BL_PANSS_G9_Unusual_Thought_Content" = as.numeric(BL_PANSS_G9_Unusual_Thought_Content),
+                     "CDSS_Suicide" = as.numeric(CDSS_Suicide),
                      "YMRS_Appearance" = as.numeric(YMRS_Appearance),
                      "IS_Not_Due_Illness" = as.numeric(IS_Not_Due_Illness),
                      "BL_GAF_Symptoms" = as.numeric(input$BL_GAF_Symptoms),

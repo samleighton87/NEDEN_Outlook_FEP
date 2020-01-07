@@ -201,7 +201,7 @@ ui <- fluidPage(
                 choices = list(" " = -1 ,"0 - All the time" = 0, "1" = 1,"2" = 2,"3" = 3,"4" = 4, "5" = 5, "6 - Never"=6), selected = -1),
     selectInput("Client_Job_Change_Interrupted_School_Attendance","PAS General - Job Change / Interrupted School Attendance in previous 3 years",
                 choices = list(" " = -1 ,"0 - Not affected" = 0, "1" = 1,"2" = 2,"3" = 3,"4" = 4, "5" = 5, "6 - Less than 2 weeks in school or job"=6), selected = -1),
-    selectInput("Client_Highest_Functioning_Achieved_Life","PAS General - Degree of Interest in Life",
+    selectInput("Client_Highest_Functioning_Achieved_Life","PAS General - Highest Functioning Ever Achieved in Life",
                 choices = list(" " = -1,"0 - Fully able to function" = 0, "1" = 1,"2" = 2,"3" = 3,"4" = 4, "5" = 5, "6 - Unable to function"=6), selected = -1),
     selectInput("Client_Energy_Level","PAS General - Energy Level",
                 choices = list(" " = -1 ,"0 - Strong drive, keen, active, alert" = 0, "1" = 1,"2" = 2,"3" = 3,"4" = 4, "5" = 5, "6 - Submissive, inadequate, passive"=6), selected = -1),

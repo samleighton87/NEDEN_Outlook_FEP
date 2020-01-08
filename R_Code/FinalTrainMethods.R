@@ -20,6 +20,8 @@ library(stats)
 library(png)
 library(PostcodesioR)
 library(AppliedPredictiveModeling)
+library(rmda)
+library(pmsampsize)
 #github libraries
 library(CalibrationCurves)
 library(dca)
@@ -34,7 +36,7 @@ options(max.print=1000000)
 options(scipen=999)
 options(digits = 4)
 
-setwd("/Users/sam_l/Desktop/Outlook/")
+setwd("/Users/sam_l/Desktop/Outlook/FinalPostReview/")
 
 makeVlist <- function(dta) { 
   labels <- sapply(dta, function(x) attr(x, "label"))
@@ -511,7 +513,7 @@ getCCGFromPostcode = function(postcode, ccgTable)
 #Custom method for internal validation glm only
 customMultipleImputeCV = function(dataset, #dataset with outcome
                             outcomeVariable, #outcome variable name String
-                            repeats = 100, #defaults to 100 repeats
+                            repeats = 10, #defaults to 10 repeats as per steyerberg
                             cv = 10 , #defaults to 10 folds
                             control = trainControl(method="none", classProbs=TRUE, summaryFunction=twoClassSummary), # no tuning
                             preProcess = c("center", "scale","knnImpute"),#what preprocessing for model testing
@@ -624,21 +626,64 @@ combineResultsInSequenceNested = function(results, predictYes = F)
   return(results_seq)
 }
 
+#sample size
+pmsampsize(type = "b",rsquared = 0.25, parameters = 20, shrinkage = 0.9, prevalence = 0.5)
+
+#Impute 12 month outcome for EDEN and Outlook datasets separately, using only PANSS at 6 months and 12 months.
+#EDEN
+eden_6_12 = read_csv("EDEN_6_12_PANSS.csv")
+eden_6_12 = csv_to_factor(eden_6_12)
+eden_6_12$row = rownames(eden_6_12)
+#remove empty rows (not including coloumn 64 which is the row number and never empty)
+eden_6_12 = eden_6_12[rowSums(is.na(eden_6_12[,-64])) != ncol(eden_6_12[,-64]),]
+#Impute the missing data (not using row number column 64)
+tempData_eden_6_12 = mice(eden_6_12[,-64], m=1, seed=987)
+#Take the imputed outcome
+complete_eden_6_12 = complete(tempData_eden_6_12,1)
+#preserve original rownames
+rownames(complete_eden_6_12) = eden_6_12$row
+
+#Outlook
+outlook_6_12 = read_csv("Outlook_6_12_PANSS.csv")
+outlook_6_12 = csv_to_factor(outlook_6_12)
+outlook_6_12$row = rownames(outlook_6_12)
+#remove empty rows (not including coloumn 64 which is the row number and never empty)
+outlook_6_12 = outlook_6_12[rowSums(is.na(outlook_6_12[,-64])) != ncol(outlook_6_12[,-64]),]
+#Impute the missing data (not using row number column 64)
+tempData_outlook_6_12 = mice(outlook_6_12[,-64], m=1, seed=987)
+#Take the imputed outcome
+complete_outlook_6_12 = complete(tempData_outlook_6_12,1)
+#preserve original rownames
+rownames(complete_outlook_6_12) = outlook_6_12$row
 
 #Outlookall = read_spss("OutlookData/PSYGRID 1E.sav")
 #Outlookall_labels = makeVlist(Outlookall)
 #write_csv(all_to_factor(Outlookall), path = "Outlookall.csv") #Have to manually remove "NA"s from csv file
 #write_csv(format.data.frame(Outlookall_labels), path = "Outlookall_labels.csv")
 
-eden_outlook_preproc = read_csv("outlook_eden_preproc.csv")
+eden_outlook_preproc = read_csv("outlook_eden_preproc_rem.csv")
 eden_outlook_preproc_factor = csv_to_factor(eden_outlook_preproc)
 
 eden_all = eden_outlook_preproc_factor[ which(eden_outlook_preproc_factor$Study == "EDEN"),!(colnames(eden_outlook_preproc_factor) %in% c("Study")) ]
 outlook_all = eden_outlook_preproc_factor[ which(eden_outlook_preproc_factor$Study == "Outlook"),!(colnames(eden_outlook_preproc_factor) %in% c("Study")) ]
 
-#Choose Final Columns
-eden_all_final = eden_all[,-c(3:9,17,19:24,113:119)]
-outlook_all_final = outlook_all[,-c(3:9,17,19:24,113:119)]
+#Choose Final predictors based on expert knowledge
+eden_all_final = eden_all[rownames(complete_eden_6_12),-c(3:9,17,19:24,113:119)]
+outlook_all_final = outlook_all[rownames(complete_outlook_6_12),-c(3:9,17,19:24,113:119)]
+eden_all_final_old = eden_all_final
+outlook_all_final_old = outlook_all_final
+
+#Replace missing outcome column with imputed outcome column from above
+eden_all_final$M12_PANSS_Period_Rem = complete_eden_6_12$M12_PANSS_Period_Rem
+outlook_all_final$M12_PANSS_Period_Rem = complete_outlook_6_12$M12_PANSS_Period_Rem
+
+#Baseline stats
+#summary(aov(y~group, data = data.frame(group=factor(rep(1:4, c(1027,901,399,278))),y=c(eden_all$ADJ_DUP,
+#                                                                                           eden_all_final$ADJ_DUP,
+#                                                                                           outlook_all$ADJ_DUP,
+#                                                                                           outlook_all_final$ADJ_DUP))))
+
+#chisq.test(as.table(rbind(c(245,399,262,98),c(216,347,228,91),c(89,130,92,69),c(58,96,68,47))), correct = F)
 
 #tune over three separate grids of static alpha and varied lambda to allow us to vary selection criteria by tolerance
 #which is based on lambda only
@@ -648,67 +693,15 @@ tuneGrid.9 = expand.grid(alpha=0.9, lambda = 10 ^ seq(-0.3, -5, length = 100))
 
 #Remission Data set up
 eden_all_final_Rem = processData(dataset = eden_all_final, outcomeVariable = "M12_PANSS_Period_Rem",
-                           siteOutcomeColumnNames = c("Site","M12_PANSS_Period_Rem","M12_GAF_SD_Recovery","M12_EQ5D_UK_TTO_Index_Binary"))
-
+                           siteOutcomeColumnNames = c("Site","M12_PANSS_Period_Rem"))
+#Don't have 25% cut off for test dataset predictors
 outlook_all_final_Rem = processData(dataset = outlook_all_final, outcomeVariable = "M12_PANSS_Period_Rem", removeMissing = F,
-                              siteOutcomeColumnNames = c("Site","M12_PANSS_Period_Rem","M12_GAF_SD_Recovery","M12_EQ5D_UK_TTO_Index_Binary"))
-
+                              siteOutcomeColumnNames = c("Site","M12_PANSS_Period_Rem"))
+#same predictor columns in both datasets
 eden_all_final_Rem = matchData(otherData = outlook_all_final_Rem, yourData = eden_all_final_Rem)
 outlook_all_final_Rem = matchData(otherData = eden_all_final_Rem, yourData = outlook_all_final_Rem)
 
-#Basline characteristics Stats
-#
-#poisson anova and post hoc tukey
-#model.p = glm(y~group, family=poisson, data = data.frame(group=factor(rep(1:4, c(1027,673,399,191))),y=c(rowSums(eden_all[,53:82]),rowSums(outlook_all[,53:82]),rowSums(eden_all_Rem[,48:77]),rowSums(outlook_all_Rem[,48:77]))))
-#Anova(model.p, type ="II",test = "LR")
-#marginal = emmeans(model.p,~ group)
-#pairs(marginal,adjust="tukey")
-#cld(marginal,alpha=0.05,Letters=letters,adjust="tukey")
-#
-#regular anova and post hoc tukey
-#summary(aov(y~group, data = data.frame(group=factor(rep(1:4, c(1027,673,399,191))),y=c(eden_all$PCT_Average_Scrore_2007,
-#                                                                                           outlook_all$PCT_Average_Scrore_2007,
-#                                                                                           eden_all_Rem$PCT_Average_Scrore_2007,
-#                                                                                           outlook_all_Rem$PCT_Average_Scrore_2007))))
-#TukeyHSD(aov(y~group, data = data.frame(group=factor(rep(1:4, c(1027,673,399,191))),y=c(eden_all$PCT_Average_Scrore_2007,
-#                                                                                       outlook_all$PCT_Average_Scrore_2007,
-#                                                                                       eden_all_Rem$PCT_Average_Scrore_2007,
-#                                                                                       outlook_all_Rem$PCT_Average_Scrore_2007))))
-#
-#summary(aov(y~group, data = data.frame(group=factor(rep(1:4, c(1027,673,399,191))),y=c(eden_all$ADJ_DUP,
-#                                                                                       outlook_all$ADJ_DUP,
-#                                                                                       eden_all_Rem$ADJ_DUP,
-#                                                                                       outlook_all_Rem$ADJ_DUP))))
-#TukeyHSD(aov(y~group, data = data.frame(group=factor(rep(1:4, c(1027,673,399,191))),y=c(eden_all$ADJ_DUP,
-#                                                                                       outlook_all$ADJ_DUP,
-#                                                                                       eden_all_Rem$ADJ_DUP,
-#                                                                                       outlook_all_Rem$ADJ_DUP))))
-#summary(aov(y~group, data = data.frame(group=factor(rep(1:4, c(1027,673,399,191))),y=c(eden_all$Age_Entry,
-#                                                                                       outlook_all$Age_Entry,
-#                                                                                       eden_all_Rem$Age_Entry,
-#                                                                                       outlook_all_Rem$Age_Entry))))
-#TukeyHSD(aov(y~group, data = data.frame(group=factor(rep(1:4, c(1027,673,399,191))),y=c(eden_all$Age_Entry,
-#                                                                                        outlook_all$Age_Entry,
-#                                                                                        eden_all_Rem$Age_Entry,
-#                                                                                        outlook_all_Rem$Age_Entry))))
-#Chi squared test
-#chisq.test(as.table(rbind(c(709,318),c(246,153))), correct = F)
-#chisq.test(as.table(rbind(c(723,(1027-723)),c(493,673-493),c(257,399-257),c(149,191-149))), correct = F)
-#chisq.test(as.table(rbind(c(284,(1027-284)),c(190,673-190),c(174,399-174),c(85,191-85))), correct = F)
-#chisq.test(as.table(rbind(c(555,(1027-555)),c(373,673-373),c(162,399-162),c(90,191-90))), correct = F)
-#chisq.test(as.table(rbind(c(89,130,92,69),c(40,67,46,35))), correct = F)
-
-#Look at correlation
-all_Rem_final_all = rbind(eden_all_final_Rem, outlook_all_final_Rem)
-all_Rem_final = all_Rem_final_all[,-c(96,97)]
-all_Rem_final_imp <- mice(all_Rem_final, m=1, seed = 987)
-all_Rem_final_imputed <- complete(all_Rem_final_imp,1)
-cor_all_Rem_final = cor(all_Rem_final_imputed)
-pdf("corPlotUnordered_Number_Final.pdf", width = 50, height = 50)
-corrplot(cor_all_Rem_final, method="number")
-dev.off()
-
-#Tune over three ranges an alpha (0.1, 0.5 & 0.9) and 100 lambdas
+#Tune over three ranges an alpha (0.1, 0.5 & 0.9) and 100 lambdas - native caret doesn't work correctly for tuning here
 results_mods_final_Rem.1 = nestedSiteCV(datasetWithSites = eden_all_final_Rem, outcomeVariable = "M12_PANSS_Period_Rem", tuneGrid = tuneGrid.1)
 results_mods_final_Rem.5 = nestedSiteCV(datasetWithSites = eden_all_final_Rem, outcomeVariable = "M12_PANSS_Period_Rem", tuneGrid = tuneGrid.5)
 results_mods_final_Rem.9 = nestedSiteCV(datasetWithSites = eden_all_final_Rem, outcomeVariable = "M12_PANSS_Period_Rem", tuneGrid = tuneGrid.9)
@@ -720,28 +713,31 @@ results_seq_final_Rem.9 = combineResultsInSequence(results_mods_final_Rem.9, pre
 #which has best combination of discrimation, predictor stability & sparsity?
 roc_seq_final_Rem.1 = roc(predictor = results_seq_final_Rem.9$pred, response = results_seq_final_Rem.9$obs, ci = T, levels=c("No", "Yes"), direction=">")
 auc_seq_final_Rem.1 = roc_seq_final_Rem.1$auc
-roc_seq_final_Rem.1
+roc_seq_final_Rem.1 #AUC 0.672
 df_coefs_final_Rem.1 = coefEvaluation(datasetWithSites = eden_all_final_Rem, results_mods = results_mods_final_Rem.1)
-View(df_coefs_final_Rem.1)
+View(df_coefs_final_Rem.1) #stability 0.5775
 roc_seq_final_Rem.5 = roc(predictor = results_seq_final_Rem.9$pred, response = results_seq_final_Rem.9$obs, ci = T, levels=c("No", "Yes"), direction=">")
 auc_seq_final_Rem.5 = roc_seq_final_Rem.5$auc
-roc_seq_final_Rem.5
+roc_seq_final_Rem.5 #AUC 0.672
 df_coefs_final_Rem.5 = coefEvaluation(datasetWithSites = eden_all_final_Rem, results_mods = results_mods_final_Rem.5)
-View(df_coefs_final_Rem.5)
+View(df_coefs_final_Rem.5) #stability 0.6435
 roc_seq_final_Rem.9 = roc(predictor = results_seq_final_Rem.9$pred, response = results_seq_final_Rem.9$obs, ci = T, levels=c("No", "Yes"), direction=">")
 auc_seq_final_Rem.9 = roc_seq_final_Rem.9$auc
-roc_seq_final_Rem.9
+roc_seq_final_Rem.9 #AUC 0.672
 df_coefs_final_Rem.9 = coefEvaluation(datasetWithSites = eden_all_final_Rem, results_mods = results_mods_final_Rem.9)
-View(df_coefs_final_Rem.9)
-#results_mods_final_Rem.9 has best combination of discrimination, stability and sparsity
-val.prob.ci.2(p=results_seq_final_Rem.9$pred, y=results_seq_final_Rem.9$obs=="No", g=10, logistic.cal = T, lty.log=9,
+View(df_coefs_final_Rem.9) #stability 0.6137
+#results_mods_final_Rem.5 has best combination of discrimination and stability
+val.prob.ci.2(p=results_seq_final_Rem.5$pred, y=results_seq_final_Rem.5$obs=="No", g=10, logistic.cal = T, lty.log=9,
               col.log="red", lwd.log=1.5, col.ideal="blue", lwd.ideal=0.5, dostats = T)
 
 #Build GLM with predictors present across all 14 LOSOCV
-#this further reduces the degrees of freedom, which should offset the increased degrees of freedom by refitting an unpenalised glm
-#however, refitting an unpenalised model is also fine - p301, Statistical Learning With Sparsity, The LASSO and Generalizations, Hastie et al 2016
-View(df_coefs_final_Rem.9)
-eden_all_final_Rem_outlook = eden_all_final_Rem[,c(2,8,19,29,32,35,43,55,70,78,88,93)] #not outcome column as imputing first
+#Tune coefficient inclusion by percentage presence - 100%, 90%, 80%, 70%, 50% - whichever performs best at internal validation
+#(Steyerberg uses 50% in https://ajp.psychiatryonline.org/doi/10.1176/appi.ajp.2018.18050566)
+#this further reduces the degrees of freedom
+View(df_coefs_final_Rem.5)
+#select coefficients at different perentage cut offs here
+#80% is best at internal validation
+eden_all_final_Rem_outlook = eden_all_final_Rem[,c(8,35,25,32,29,27,19,2,88,43,34,36,13,93,3,55,86,78,1,70)] #not outcome column as imputing first
 #Multiple Imputation to Construct Final GLM model - not based on outcome column
 #10 datasets
 tempData_eden_outlook <- mice(eden_all_final_Rem_outlook,m=10,seed=987)
@@ -761,21 +757,21 @@ for (i in seq(1:tempData_eden_outlook$m))
 View(-summary(pool(finalModels), conf.int = T, exponentiate = F, conf.level = 0.95)[,c(1,6,7)])
 View(1/summary(pool(finalModels), conf.int = T, exponentiate = T, conf.level = 0.95)[,c(1,6,7)])
 
-#Internal Validation
-#Now 100x repeated 10x cross-validation for internal validation with mulitple imputation
+#Internal Validation to determine best percentage presence of predictors
+#Now 10x repeated 10x cross-validation for internal validation with mulitple imputation
 #but not bootstrap as overly optimistic as per https://www.r-bloggers.com/part-2-optimism-corrected-bootstrapping-is-definitely-bias-further-evidence/
 #https://stats.stackexchange.com/a/46344/114271
 #https://intobioinformatics.wordpress.com/2018/12/25/optimism-corrected-bootstrapping-a-problematic-method/
 #Add outcome back in
 eden_all_final_Rem_outlook$M12_PANSS_Period_Rem = eden_all_final_Rem$M12_PANSS_Period_Rem
-#Takes over an hour
+#Takes over 10 mins
 eden_all_final_Rem_outlook_glm_internal_mods_results = customMultipleImputeCV(dataset = eden_all_final_Rem_outlook, outcomeVariable = "M12_PANSS_Period_Rem")
 eden_all_final_Rem_outlook_glm_internal_results_seq = combineResultsInSequenceNested(eden_all_final_Rem_outlook_glm_internal_mods_results$results, predictYes = F)
 #Check Internal Validation Calibration and Discrimination
 pdf("figure_2.pdf", width = 7, height = 7)
 val.prob.ci.2(p=eden_all_final_Rem_outlook_glm_internal_results_seq$pred, y=eden_all_final_Rem_outlook_glm_internal_results_seq$obs=="No", g=10, logistic.cal = T, lty.log=9,
               col.log="red", lwd.log=1.5, col.ideal="blue", lwd.ideal=0.5, dostats = T)
-#Shrinkage factor 0.904672, C-statistic 0.748765
+#AUC 0.7176573 for 50%,  0.7210798 for 70%, 0.7237540 for 80%, 0.721707 for 90%, 0.720897 for 100%
 dev.off()
 eden_all_final_Rem_outlook_glm_internal_results_seq_roc = roc(predictor = eden_all_final_Rem_outlook_glm_internal_results_seq$pred, 
                                                               response = eden_all_final_Rem_outlook_glm_internal_results_seq$obs, ci = T, levels=c("No", "Yes"), direction=">")
@@ -783,21 +779,23 @@ eden_all_final_Rem_outlook_glm_internal_results_seq_auc = eden_all_final_Rem_out
 eden_all_final_Rem_outlook_glm_internal_results_seq_roc
 eden_all_final_Rem_outlook_glm_internal_results_seq_auc_p = permutationPValue(results_seq = eden_all_final_Rem_outlook_glm_internal_results_seq, 
                                                                               auc_seq = eden_all_final_Rem_outlook_glm_internal_results_seq_auc, predictYes = F)
-View(-summary(pool(finalModels), conf.int = T, exponentiate = F, conf.level = 0.95)[,1]*0.904672)
-View(1/summary(pool(finalModels), conf.int = T, exponentiate = T, conf.level = 0.95)[,1]*0.904672)
+#multiply by shrinkage factor
+View(-summary(pool(finalModels), conf.int = T, exponentiate = F, conf.level = 0.95)[,c(1,6,7)]* 0.8727967)
+View(exp(-summary(pool(finalModels), conf.int = T, exponentiate = F, conf.level = 0.95)[,c(1,6,7)]* 0.8727967))
 
 #Internal-External Validation
 #get a true nested leave one-site out performance metric (adding outcome back in) - previous just does random nested cv
 eden_all_final_Rem_outlook$Site = eden_all_final_Rem$Site
 #with shrinkage from internal and multiple imputation for model development
 eden_all_final_Rem_outlook_glm_LOSOCV_mods_results = nestedSiteCV(datasetWithSites = eden_all_final_Rem_outlook, outcomeVariable = "M12_PANSS_Period_Rem", grid = F, method = "glm", 
-                                                                  control = trainControl(method="none", classProbs=TRUE, summaryFunction=twoClassSummary), shrinkage = 0.904672,
+                                                                  control = trainControl(method="none", classProbs=TRUE, summaryFunction=twoClassSummary), shrinkage =  0.8727967,
                                                                   colsToSave = "ADJ_DUP", multipleGLM = T)
 eden_all_final_Rem_outlook_glm_LOSOCV_results_seq = combineResultsInSequence(eden_all_final_Rem_outlook_glm_LOSOCV_mods_results, predictYes = F,colsToSave = "ADJ_DUP")
 #Calibration Curve Internal-External
 pdf("figure_3.pdf", width = 7, height = 7)
 val.prob.ci.2(p=eden_all_final_Rem_outlook_glm_LOSOCV_results_seq$pred, y=eden_all_final_Rem_outlook_glm_LOSOCV_results_seq$obs=="No", g=10, logistic.cal = T, lty.log=9,
               col.log="red", lwd.log=1.5, col.ideal="blue", lwd.ideal=0.5, dostats = T)
+#0.71 vs 0.71 vs 0.72 vs 0.71 vs 0.71
 dev.off()
 eden_all_final_Rem_outlook_glm_LOSOCV_results_seq_roc = roc(predictor = eden_all_final_Rem_outlook_glm_LOSOCV_results_seq$pred, 
                                                               response = eden_all_final_Rem_outlook_glm_LOSOCV_results_seq$obs, ci = T, levels=c("No", "Yes"), direction=">")
@@ -825,7 +823,7 @@ set.seed(987)
 mod_eden_all_final_Rem_outlook_glm = train(M12_PANSS_Period_Rem ~ ., data=eden_all_final_Rem_outlook, method="glm", metric="ROC", preProc = c("center", "scale","knnImpute"), 
                                             trControl = trainControl(method="none", classProbs=TRUE, summaryFunction=twoClassSummary), na.action = na.pass)
 mod_eden_all_final_Rem_outlook_glm_shrink = mod_eden_all_final_Rem_outlook_glm
-mod_eden_all_final_Rem_outlook_glm_shrink$finalModel$coefficients = summary(pool(finalModels))[[1]]*0.904672
+mod_eden_all_final_Rem_outlook_glm_shrink$finalModel$coefficients = summary(pool(finalModels))[[1]]* 0.8727967
 outlook_all_final_Rem_glm_result_shrink = predict(mod_eden_all_final_Rem_outlook_glm_shrink, outlook_all_final_Rem_eden, type = "prob", na.action = na.pass)
 pdf("figure_5.pdf", width = 7, height = 7)
 val.prob.ci.2(p=outlook_all_final_Rem_glm_result_shrink$No, y=outlook_all_final_Rem_eden$M12_PANSS_Period_Rem=="No", g=10, logistic.cal = T, lty.log=9,
@@ -845,8 +843,10 @@ dca_glm_Rem_ext$Model = outlook_all_final_Rem_glm_result_shrink$No
 dca_glm_Rem_ext$ADJ_DUP = outlook_all_final_Rem_eden$ADJ_DUP
 #get data across all thresholds
 pdf("figure_6.pdf", width = 7, height = 7)
-dca(data = as.data.frame(dca_glm_Rem_ext), outcome = "M12_PANSS_Period_Rem", predictors = c("Model","ADJ_DUP"), smooth = "TRUE", loess.span = 0.35, probability = c(TRUE, FALSE), graph = T, xstart = 0.2, xstop = 0.75)
+dca(data = as.data.frame(dca_glm_Rem_ext), outcome = "M12_PANSS_Period_Rem", predictors = c("Model","ADJ_DUP"), smooth = "TRUE", loess.span = 0.35, probability = c(TRUE, FALSE), graph = T, xstart = 0.32, xstop = 0.725)
 dev.off()
+
+##
 
 #for online model, refit with prestandardised local concentration on based on whole range of values from IMD 2007 just to get correct preprocess info
 #gives identical coefficients
@@ -858,7 +858,7 @@ set.seed(987)
 mod_eden_all_final_Rem_outlook_glm_new = train(M12_PANSS_Period_Rem ~ ., data=eden_all_final_Rem_outlook_new, method="glm", metric="ROC", preProc = c("center", "scale","knnImpute"), 
                                                trControl = trainControl(method="none", classProbs=TRUE, summaryFunction=twoClassSummary), na.action = na.pass)
 mod_eden_all_final_Rem_outlook_glm_new_shrink = mod_eden_all_final_Rem_outlook_glm_new
-mod_eden_all_final_Rem_outlook_glm_new_shrink$finalModel$coefficients = summary(pool(finalModels))[[1]]*0.904672
+mod_eden_all_final_Rem_outlook_glm_new_shrink$finalModel$coefficients = summary(pool(finalModels))[[1]]*0.8727967
 #remove training data for sharing model
 mod_eden_all_final_Rem_outlook_glm_new_shrink$trainingData = NULL
 save(mod_eden_all_final_Rem_outlook_glm_new_shrink, file = "mod_eden_all_final_Rem_outlook_glm_new_shrink.rda")

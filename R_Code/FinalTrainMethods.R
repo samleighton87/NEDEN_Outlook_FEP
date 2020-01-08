@@ -20,7 +20,6 @@ library(stats)
 library(png)
 library(PostcodesioR)
 library(AppliedPredictiveModeling)
-library(rmda)
 library(pmsampsize)
 #github libraries
 library(CalibrationCurves)

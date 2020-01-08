@@ -26,6 +26,7 @@ We would like to acknowledge the authors of the following packages which were re
 * https://CRAN.R-project.org/package=png
 * https://CRAN.R-project.org/package=PostcodesioR
 * https://CRAN.R-project.org/package=AppliedPredictiveModeling
+* https://CRAN.R-project.org/package=pmsampsize
 * https://github.com/nogueirs/JMLR2018
 * https://github.com/BavoDC/CalibrationCurves
 * https://github.com/ddsjoberg/dca

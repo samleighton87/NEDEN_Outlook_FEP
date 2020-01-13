@@ -5,6 +5,8 @@ library(caret)
 library(png)
 library(readr)
 library(RANN)
+library(shinyalert)
+library(shinyjs)
 
 #load objects and data
 ccg_local_conc_2019 = read_csv("CCG_Local_Conc_2019.csv")
@@ -109,7 +111,7 @@ getCCGFromPostcode = function(postcode, ccgTable)
     }else
     {
       ccg = ccgTable[which(ccgTable[[1]] == outCodeToPostCode$codes$ccg),]
-      print(paste0("Your postocde outcode corresponds to ",ccg[[2]]))
+      print(paste0("Your postcode outcode corresponds to ",ccg[[2]]))
       print(paste0("The Deprivation Z-Score for ",ccg[[2]]," is ", ccg[[4]], "."))
       completePostCode = outCodeToPostCode$postcode
       CCGName = ccg[[2]]
@@ -178,10 +180,15 @@ getCCGFromPostcode = function(postcode, ccgTable)
 }
 
 ui <- fluidPage(
+  
+  useShinyalert(),
+  
+  #main UI
   HTML('<meta name="viewport" content="width=1024">'),
   
   titlePanel("Calculate the Risk of Not Being in Remission from a First Episode of Psychosis at 1 Year."),
   sidebarLayout(sidebarPanel(
+    useShinyjs(),id="sidebar",
     h2("Enter Baseline Variables (if known):"),
     br(),
     selectInput("Sex.Male","Sex at Birth",
@@ -225,15 +232,41 @@ ui <- fluidPage(
     textInput("PostCodeToDep","Postcode (enter at least postcode district, spaces are ignored) - England only, otherwise deprivation estimated",value = " ")
   ),
   mainPanel(
+    useShinyjs(),id="mainpanel",
     br(),br(),actionButton("goButton", "Calculate!"),br(),br(),
     plotOutput("probNoRemission", width = "100%"),
     br(),br(),actionButton("resetButton", "Reset"),br(),br()
   )
 ))
 
-# Define server logic required to draw a piechart ----
+# Define server logic required
 server <- function(input, output, session) {
+  shinyjs::hide(id = "sidebar")
+  shinyjs::hide(id = "mainpanel")
 
+  # -- Ensure user is authenticated ----
+  
+  # Password prompt
+  shinyalert(
+    title = "Log in",
+    text = "Password",
+    type = "input",
+    closeOnEsc = F,
+    closeOnClickOutside = F,
+    showCancelButton = F,
+    showConfirmButton = T,
+    inputType = "password",
+    confirmButtonCol = "#26a69a"
+  )
+  
+  # Wait until user has entered password.
+  observeEvent(input$shinyalert, {
+    
+    if (input$shinyalert == "fep2020") {
+      # If user successfully authenticated.
+      shinyjs::show(id = "sidebar")
+      shinyjs::show(id = "mainpanel")
+  
   output$probNoRemission = renderPlot({
     plot(0,type='n',axes=FALSE, main="FEP Non-Remission Calculator v0.2.1 (06/01/20)\nNOT FOR CLINICAL USE", 
     sub="We used data from the National Evaluation of Development of Early 
@@ -250,6 +283,23 @@ server <- function(input, output, session) {
         , ylab = "",xlab = "",cex.main = 2, col.main = "black")
     text(x = 1, y=0.5, "Developed in collaboration between the Institute of\nMental Health & Wellbeing, University of Glasgow &\nInstitute for Mental Health, University of Birmingham\nby Dr Samuel Leighton and Dr Pavan Mallikarjun.", cex = 1.5)
   })
+    } else {
+      # Bad password.
+      shinyalert(
+        title = "Unauthorized", 
+        text = "Bad password. Try again?", 
+        type = "error",
+        showConfirmButton = T,
+        showCancelButton = T, 
+        closeOnClickOutside = F, 
+        closeOnEsc = F,
+        confirmButtonCol = "#26a69a", 
+        callbackJS = "function(x) { if(x !== false) history.go(0); }" #refresh page on OK
+      )
+    }
+  })
+  
+  
   
   observeEvent(input$BL_GAF_Symptoms, {
     if(as.numeric(input$BL_GAF_Symptoms) < 1 | as.numeric(input$BL_GAF_Symptoms) > 100 | is.na(input$BL_GAF_Symptoms))

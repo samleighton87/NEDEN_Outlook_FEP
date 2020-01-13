@@ -33,3 +33,6 @@ We would like to acknowledge the authors of the following packages which were re
 * https://CRAN.R-project.org/package=shiny
 * https://CRAN.R-project.org/package=RANN
 * https://CRAN.R-project.org/package=rsconnect
+* https://CRAN.R-project.org/package=shinyalert
+* https://CRAN.R-project.org/package=shinyjs
+* https://github.com/magnusfurugard/password-protected-shiny

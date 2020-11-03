@@ -636,6 +636,97 @@ outlook_all_final_Rem = processData(
 eden_all_final_Rem = matchData(otherData = outlook_all_final_Rem, yourData = eden_all_final_Rem)
 outlook_all_final_Rem = matchData(otherData = eden_all_final_Rem, yourData = outlook_all_final_Rem)
 
+#######################################################################
+#summary statistics
+#Age
+summary(eden_all$Age_Entry)
+mean(eden_all$Age_Entry, na.rm = T)
+sd(eden_all$Age_Entry, na.rm = T)
+
+summary(eden_all_final_Rem$Age_Entry)
+mean(eden_all_final_Rem$Age_Entry, na.rm = T)
+sd(eden_all_final_Rem$Age_Entry, na.rm = T)
+
+summary(outlook_all$Age_Entry)
+mean(outlook_all$Age_Entry, na.rm = T)
+sd(outlook_all$Age_Entry, na.rm = T)
+
+summary(outlook_all_final_Rem$Age_Entry)
+mean(outlook_all_final_Rem$Age_Entry, na.rm = T)
+sd(outlook_all_final_Rem$Age_Entry, na.rm = T)
+
+summary(aov(y~group, data = data.frame(group=factor(rep(1:4, c(1027,901,399,278))),y=c(eden_all$Age_Entry,
+                                                                                       eden_all_final_Rem$Age_Entry,
+                                                                                       outlook_all$Age_Entry,
+                                                                                       outlook_all_final_Rem$Age_Entry))))
+#Sex
+summary(eden_all$Sex)
+summary(as.factor(eden_all_final_Rem$Sex))
+summary(outlook_all$Sex)
+summary(as.factor(outlook_all_final_Rem$Sex))
+
+chisq.test(as.table(rbind(c(709,318),c(624,277),c(246,153),c(169,109))), correct = F)
+
+#EET
+summary(eden_all$BL_EET)
+summary(as.factor(eden_all_final_Rem$BL_EET))
+summary(outlook_all$BL_EET)
+summary(as.factor(outlook_all_final_Rem$BL_EET))
+
+chisq.test(as.table(rbind(c(589,284),c(521,249),c(225,174),c(149,129))), correct = F)
+
+#Qualification
+summary(as.factor(eden_all$Qualification_Level_Ordinal))
+summary(as.factor(eden_all_final_Rem$Qualification_Level_Ordinal))
+summary(as.factor(outlook_all$Qualification_Level_Ordinal))
+summary(as.factor(outlook_all_final_Rem$Qualification_Level_Ordinal))
+
+chisq.test(as.table(rbind(c(245,399,262,98),c(216,347,228,91),c(89,130,92,69),c(58,96,68,47))), correct = F)
+
+#DUP
+summary(eden_all$ADJ_DUP)
+mean(eden_all$ADJ_DUP, na.rm = T)
+sd(eden_all$ADJ_DUP, na.rm = T)
+
+summary(eden_all_final_Rem$ADJ_DUP)
+mean(eden_all_final_Rem$ADJ_DUP, na.rm = T)
+sd(eden_all_final_Rem$ADJ_DUP, na.rm = T)
+
+summary(outlook_all$ADJ_DUP)
+mean(outlook_all$ADJ_DUP, na.rm = T)
+sd(outlook_all$ADJ_DUP, na.rm = T)
+
+summary(outlook_all_final_Rem$ADJ_DUP)
+mean(outlook_all_final_Rem$ADJ_DUP, na.rm = T)
+sd(outlook_all_final_Rem$ADJ_DUP, na.rm = T)
+
+summary(aov(y~group, data = data.frame(group=factor(rep(1:4, c(1027,901,399,278))),y=c(eden_all$ADJ_DUP,
+                                                                                       eden_all_final_Rem$ADJ_DUP,
+                                                                                       outlook_all$ADJ_DUP,
+                                                                                       outlook_all_final_Rem$ADJ_DUP))))
+
+#Deprivation
+summary(eden_all$PCT_Average_Scrore_2007)
+mean(eden_all$PCT_Average_Scrore_2007, na.rm = T)
+sd(eden_all$PCT_Average_Scrore_2007, na.rm = T)
+
+summary(eden_all_final_Rem$PCT_Average_Scrore_2007)
+mean(eden_all_final_Rem$PCT_Average_Scrore_2007, na.rm = T)
+sd(eden_all_final_Rem$PCT_Average_Scrore_2007, na.rm = T)
+
+summary(outlook_all$PCT_Average_Scrore_2007)
+mean(outlook_all$PCT_Average_Scrore_2007, na.rm = T)
+sd(outlook_all$PCT_Average_Scrore_2007, na.rm = T)
+
+summary(outlook_all_final_Rem$PCT_Average_Scrore_2007)
+mean(outlook_all_final_Rem$PCT_Average_Scrore_2007, na.rm = T)
+sd(outlook_all_final_Rem$PCT_Average_Scrore_2007, na.rm = T)
+
+summary(aov(y~group, data = data.frame(group=factor(rep(1:4, c(1027,901,399,278))),y=c(eden_all$PCT_Average_Scrore_2007,
+                                                                                       eden_all_final_Rem$PCT_Average_Scrore_2007,
+                                                                                       outlook_all$PCT_Average_Scrore_2007,
+                                                                                       outlook_all_final_Rem$PCT_Average_Scrore_2007))))
+
 #########################################################################
 #internal validation
 #nested cv

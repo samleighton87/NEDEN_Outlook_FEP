@@ -170,8 +170,9 @@ nestedSiteCVUpdate = function(datasetWithSites,
                               method = "glmnet",
                               nestedSite = TRUE,
                               control = trainControl(
-                                method = "cv",
+                                method = "repeatedcv",
                                 number = 10,
+                                repeats = 10,
                                 classProbs = TRUE,
                                 summaryFunction = twoClassSummary,
                                 selectionFunction =
@@ -661,7 +662,7 @@ df_coefs_final_RemLassoNested = coefEvaluation(
   datasetWithSites = eden_all_final_Rem,
   results_mods = results_mods_final_RemLassoNested,
   isNestedCV = T
-) #stability 0.618
+) #stability 0.60
 View(df_coefs_final_RemLassoNested) 
 results_seq_final_RemLassoNested_auc_p = permutationPValue(results_seq = results_seq_final_RemLassoNested,
                                                            auc_seq = results_seq_final_RemLassoNested_auc,
@@ -708,7 +709,7 @@ results_seq_final_RemLasso_roc = roc(
 results_seq_final_RemLasso_auc = results_seq_final_RemLasso_roc$auc
 results_seq_final_RemLasso_roc #AUC 0.67
 df_coefs_final_RemLasso = coefEvaluation(datasetWithSites = eden_all_final_Rem, results_mods = results_mods_final_RemLasso)
-View(df_coefs_final_RemLasso) #stability 0.61
+View(df_coefs_final_RemLasso) #stability 0.64
 results_seq_final_RemLasso_auc_p = permutationPValue(results_seq = results_seq_final_RemLasso,
                                                      auc_seq = results_seq_final_RemLasso_auc,
                                                      predictYes = F)
@@ -740,6 +741,9 @@ outlook_all_final_Rem_glm_result_LASSO = predict(
   type = "prob",
   na.action = na.pass
 )
+
+#figure 1 - external validation calibration plot
+pdf("figure1.pdf",width = 7, height = 7)
 val.prob.ci.2(
   p = outlook_all_final_Rem_glm_result_LASSO$No,
   y = outlook_all_final_Rem$M12_PANSS_Period_Rem == "No",
@@ -751,6 +755,8 @@ val.prob.ci.2(
   col.ideal = "blue",
   lwd.ideal = 0.5
 )
+dev.off()
+
 outlook_all_final_Rem_glm_result_LASSO_roc = roc(
   predictor = outlook_all_final_Rem_glm_result_LASSO$No,
   response = outlook_all_final_Rem$M12_PANSS_Period_Rem,
@@ -778,6 +784,8 @@ dca_glm_Rem_ext$M12_PANSS_Period_Rem = as.integer(as.character(outlook_all_final
 dca_glm_Rem_ext$Model = outlook_all_final_Rem_glm_result_LASSO$No
 dca_glm_Rem_ext$ADJ_DUP = outlook_all_final_Rem$ADJ_DUP
 #get data across all thresholds
+#figure 2 - external validation decision curve analysis
+pdf("figure2.pdf", width = 7, height = 7)
 dca(
   data = as.data.frame(dca_glm_Rem_ext),
   outcome = "M12_PANSS_Period_Rem",
@@ -789,7 +797,7 @@ dca(
   xstart = 0.35,
   xstop = 0.74
 )
-
+dev.off()
 
 # 31 predictor variables in final LASSO model = 1,2,3,4,8,12,13,19,23,25,27,28,29,32,34,35,36,38,43,49,51,52,55,62,70,74,77,78,86,88,93
 ################################################################################################################################

@@ -1,6 +1,6 @@
 # Development and validation of a non-remission risk prediction model in First Episode Psychosis: An analysis of two longitudinal studies.
 
-This is the R code for our manuscript and accompanying prediction web-tool.
+This is the R code for our manuscript.
 
 Comments are inline in the code.R and should be easy to follow. Any issues contact the authors.
 

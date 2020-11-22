@@ -189,8 +189,10 @@ pPermExternal = (1+sum(auc_null >= results_external_auc))/10001
 pPermExternal
 
 #calibration plot
+pdf("figure2.pdf", width = 7, height = 7)
 val.prob.ci.2(p=externalPreds, y=externalOutcomes=="No", g=5, logistic.cal = T, lty.log=9,
               col.log="red", lwd.log=1.5, col.ideal="blue", lwd.ideal=0.5)
+dev.off()
 
 #dca
 dca_ext = NULL
@@ -198,8 +200,10 @@ dca_ext$M12_PANSS_Period_Rem = as.integer(externalOutcomes=="No")
 dca_ext$Model = externalPreds
 dca_ext$ADJ_DUP = externalDUP
 #get data across all thresholds
+pdf("figure3.pdf", width = 7, height = 7)
 dca(data = as.data.frame(dca_ext), outcome = "M12_PANSS_Period_Rem", predictors = c("Model","ADJ_DUP"), smooth = "TRUE", 
     loess.span = 0.35, probability = c(TRUE, FALSE), graph = T, xstart = 0.3, xstop = 0.77)
+dev.off()
 
 #######################################################################
 #Demographic comparisons

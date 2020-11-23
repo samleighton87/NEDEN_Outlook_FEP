@@ -111,7 +111,10 @@ shrinkage = 0.840625
 
 #Pool results to get predictor estimates based on Rubin's rule (coefficients reversed as using to predict non-remission)
 View(-summary(pool(finalModels), conf.int = T, exponentiate = F, conf.level = 0.95)[,c(1,6,7)])
-View(1/summary(pool(finalModels), conf.int = T, exponentiate = T, conf.level = 0.95)[,c(1,6,7)])
+View(exp(-summary(pool(finalModels), conf.int = T, exponentiate = F, conf.level = 0.95)[,c(1,6,7)]))
+#With shrinkage applied
+View(-summary(pool(finalModels), conf.int = T, exponentiate = F, conf.level = 0.95)[,c(1,6,7)]*shrinkage)
+View(exp(-summary(pool(finalModels), conf.int = T, exponentiate = F, conf.level = 0.95)[,c(1,6,7)]*shrinkage))
 
 #Get a GLM model
 finalModel = finalModels[[1]]

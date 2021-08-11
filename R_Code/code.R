@@ -6,7 +6,7 @@ library(CalibrationCurves)
 library(pmsampsize)
 library(pROC)
 library(gtools)
-library(dca)
+library(dcurves)
 
 #enable multicore (windows) which roughly halfs time for analysis runs
 cl <- makeCluster(detectCores(), type = 'PSOCK')
@@ -43,7 +43,7 @@ pmsampsize(
 eden = read_csv("eden_all.csv")
 eden$Study = NULL
 eden = csv_to_factor(eden)
-
+#
 tempData <- mice(eden,m=10,seed=987)
 
 control <- trainControl(## 10-fold CV
@@ -69,7 +69,8 @@ for (i in seq(1:tempData$m))
   eden_imp_exp_stand$M12_PANSS_Period_Rem = eden$M12_PANSS_Period_Rem
   #Remove rows with missing outcomes
   eden_imp_exp_stand_MID = eden_imp_exp_stand[complete.cases(eden_imp_exp_stand), ]
-  finalModels[[i]] = glm(M12_PANSS_Period_Rem ~ ., data = eden_imp_exp_stand_MID, family = "binomial")
+  #need to return design matrix to reestimate intercept
+  finalModels[[i]] = glm(M12_PANSS_Period_Rem ~ ., data = eden_imp_exp_stand_MID, family = "binomial", x = T)
   crossValModels[[i]] = train(M12_PANSS_Period_Rem ~ ., data = eden_imp_exp_stand_MID, method = "glm", metric = "ROC", trControl=control, na.action=na.pass)
 }
 
@@ -104,22 +105,39 @@ pPermInternal = (1+sum(auc_null >= results_internal_auc))/10001
 pPermInternal
 
 #calibration plot
-val.prob.ci.2(p=internalPreds, y=internalOutcomes=="No", g=10, logistic.cal = T, lty.log=9,
+#increase memory allocated to R
+memory.limit(size=56000)
+intval_cal = val.prob.ci.2(p=internalPreds, y=internalOutcomes=="No", g=10, logistic.cal = T, lty.log=9,
               col.log="red", lwd.log=1.5, col.ideal="blue", lwd.ideal=0.5, dostats = T, smooth = "rcs")
-#shrinkage factor = 0.840625
-shrinkage = 0.840625
+#shrinkage factor = 0.8381
+shrinkage = intval_cal["Slope"]
 
 #Pool results to get predictor estimates based on Rubin's rule (coefficients reversed as using to predict non-remission)
-View(-summary(pool(finalModels), conf.int = T, exponentiate = F, conf.level = 0.95)[,c(1,6,7)])
-View(exp(-summary(pool(finalModels), conf.int = T, exponentiate = F, conf.level = 0.95)[,c(1,6,7)]))
-#With shrinkage applied
-View(-summary(pool(finalModels), conf.int = T, exponentiate = F, conf.level = 0.95)[,c(1,6,7)]*shrinkage)
-View(exp(-summary(pool(finalModels), conf.int = T, exponentiate = F, conf.level = 0.95)[,c(1,6,7)]*shrinkage))
+View(-summary(pool(finalModels), conf.int = T, exponentiate = F, conf.level = 0.95)[,c(2,7,8)])
+View(exp(-summary(pool(finalModels), conf.int = T, exponentiate = F, conf.level = 0.95)[,c(2,7,8)]))
+#With shrinkage applied (N.B. intercept still to be re-estimated)
+View(-summary(pool(finalModels), conf.int = T, exponentiate = F, conf.level = 0.95)[,c(2,7,8)]*shrinkage)
+View(exp(-summary(pool(finalModels), conf.int = T, exponentiate = F, conf.level = 0.95)[,c(2,7,8)]*shrinkage))
+
+#for each imputed dataset recalculate intercept with pooled shrunk final coefficients
+#then average the intercepts to get final intercept
+shrunk_coefs = summary(pool(finalModels))[[2]]*shrinkage
+models = list()
+intercepts = NULL
+for(i in seq(1:tempData$m))
+{
+  shrunk_LP = finalModels[[i]]$x[,2:15] %*% shrunk_coefs[2:15]
+  models[[i]] = glm(finalModels[[i]]$y ~ offset(shrunk_LP), family = "binomial")
+}
+#pooled recalculated intercept
+recalc_intercept = summary(pool(models))[[2]]
 
 #Get a GLM model
 finalModel = finalModels[[1]]
-#replace coefficients with pooled ones * shrinkage
-finalModel$coefficients = summary(pool(finalModels))[[1]]*shrinkage
+#replace coefficients with pooled ones shrunk coefs
+finalModel$coefficients = shrunk_coefs
+#replace intercept with pooled recalculated intercept
+finalModel$coefficients[1] = recalc_intercept
 
 ############################################################
 #Load study data
@@ -201,11 +219,13 @@ dev.off()
 dca_ext = NULL
 dca_ext$M12_PANSS_Period_Rem = as.integer(externalOutcomes=="No")
 dca_ext$Model = externalPreds
-dca_ext$ADJ_DUP = externalDUP
+dca_ext$DUP = externalDUP
 #get data across all thresholds
+dca_ext_calc = dca(M12_PANSS_Period_Rem ~ Model + DUP, data = as.data.frame(dca_ext), as_probability =  "DUP",
+                   thresholds = seq(0.3, 0.77, by = 0.01))
 pdf("figure3.pdf", width = 7, height = 7)
-dca(data = as.data.frame(dca_ext), outcome = "M12_PANSS_Period_Rem", predictors = c("Model","ADJ_DUP"), smooth = "TRUE", 
-    loess.span = 0.35, probability = c(TRUE, FALSE), graph = T, xstart = 0.3, xstop = 0.77)
+dca_ext_calc %>%   
+  plot(smooth = TRUE)
 dev.off()
 
 #######################################################################
@@ -302,3 +322,30 @@ summary(aov(y~group, data = data.frame(group=factor(rep(1:4, c(1027,673,399,191)
                                                                                        eden_final_demographics$PCT_Average_Scrore_2007,
                                                                                        outlook$PCT_Average_Scrore_2007,
                                                                                        outlook_final_demographics$PCT_Average_Scrore_2007))))
+
+#PANSS Totals
+eden$BL_PANSS_Total = rowSums(eden[,53:82])
+outlook$BL_PANSS_Total = rowSums(outlook[,53:82])
+eden_final_demographics$BL_PANSS_Total = rowSums(eden_final_demographics[,53:82])
+outlook_final_demographics$BL_PANSS_Total = rowSums(outlook_final_demographics[,53:82])
+
+summary(eden$BL_PANSS_Total)
+mean(eden$BL_PANSS_Total, na.rm = T)
+sd(eden$BL_PANSS_Total, na.rm = T)
+
+summary(eden_final_demographics$BL_PANSS_Total)
+mean(eden_final_demographics$BL_PANSS_Total, na.rm = T)
+sd(eden_final_demographics$BL_PANSS_Total, na.rm = T)
+
+summary(outlook$BL_PANSS_Total)
+mean(outlook$BL_PANSS_Total, na.rm = T)
+sd(outlook$BL_PANSS_Total, na.rm = T)
+
+summary(outlook_final_demographics$BL_PANSS_Total)
+mean(outlook_final_demographics$BL_PANSS_Total, na.rm = T)
+sd(outlook_final_demographics$BL_PANSS_Total, na.rm = T)
+
+summary(aov(y~group, data = data.frame(group=factor(rep(1:4, c(1027,673,399,191))),y=c(eden$BL_PANSS_Total,
+                                                                                       eden_final_demographics$BL_PANSS_Total,
+                                                                                       outlook$BL_PANSS_Total,
+                                                                                       outlook_final_demographics$BL_PANSS_Total))))

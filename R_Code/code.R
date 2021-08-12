@@ -46,7 +46,8 @@ eden = csv_to_factor(eden)
 #
 tempData <- mice(eden,m=10,seed=987)
 
-control <- trainControl(## 10-fold CV repeated 5 times
+# 10-fold CV repeated 5 times
+control <- trainControl(
   method = "repeatedcv",
   number = 10,
   repeats = 5,

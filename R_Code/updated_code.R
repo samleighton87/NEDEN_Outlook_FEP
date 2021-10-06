@@ -80,7 +80,7 @@ for (i in seq(1:tempData$m))
 internalROCs = list()
 internalROCsValues = list()
 internalROCsSEs= list()
-for(i in seq(1:tempData2$m))
+for(i in seq(1:tempData$m))
 {
   internalROCs[[i]] = roc(
     predictor = crossValModels[[i]]$pred$No,
@@ -95,11 +95,27 @@ for(i in seq(1:tempData2$m))
 #Correctly pooled C-statistic and 95% CI using Rubin's Rules with logit transformation
 pool_auc(internalROCsValues, internalROCsSEs, nimp = 10, log_auc = T)
 
+#Individual permutation tests for each multiple imputation dataset
+psPermInternal = list()
+set.seed(987)
+for(i in seq(1:tempData$m))
+{
+  #permutation p value
+  auc_null = NULL
+  for(j in seq (1:10001))
+  {
+    perm = permute(crossValModels[[i]]$pred$obs)
+    auc_null = c(auc_null, roc(predictor = crossValModels[[i]]$pred$No, response = perm, levels=c("No", "Yes"), direction=">")$auc)
+  }
+  psPermInternal[[i]] = (1+sum(auc_null >= internalROCsValues[[i]]))/10001
+}
+psPermInternal
+
 internalCalIntValues = list()
 internalCalIntSEs = list()
 internalCalSlopeValues = list()
 internalCalSlopeSEs = list()
-for(i in seq(1:tempData2$m))
+for(i in seq(1:tempData$m))
 {
   internalCal = val.prob.ci.3(p=crossValModels[[i]]$pred$No, y=as.character(crossValModels[[i]]$pred$obs)=="No", g=5, logistic.cal = T, lty.log=9,
                               col.log="red", lwd.log=1.5, col.ideal="blue", lwd.ideal=0.5)
@@ -115,8 +131,7 @@ rubin.rules(unlist(internalCalIntValues), unlist(internalCalIntSEs))
 #Correctly pooled internal Calibration slope and SE
 rubin.rules(unlist(internalCalSlopeValues), unlist(internalCalSlopeSEs))
 
-
-#for permutation 
+#combined data 
 internalPreds = NULL
 internalOutcomes = NULL
 for(i in seq(1:tempData$m))
@@ -124,28 +139,6 @@ for(i in seq(1:tempData$m))
   internalPreds = c(internalPreds,crossValModels[[i]]$pred$No)
   internalOutcomes = c(internalOutcomes, as.character(crossValModels[[i]]$pred$obs))
 }
-
-#C-statistic
-results_internal_roc = roc(
-  predictor = internalPreds,
-  response = as.factor(internalOutcomes),
-  ci = T,
-  levels = c("No", "Yes"),
-  direction = ">"
-)
-results_internal_roc
-results_internal_auc = results_internal_roc$auc
-
-#permutation p value
-set.seed(987)
-auc_null = NULL
-for(i in seq (1:10001))
-{
-  perm = permute(as.factor(internalOutcomes))
-  auc_null = c(auc_null, roc(predictor = internalPreds, response = perm, levels=c("No", "Yes"), direction=">")$auc)
-}
-pPermInternal = (1+sum(auc_null >= results_internal_auc))/10001
-pPermInternal
 
 #calibration plot
 #increase memory allocated to R
@@ -243,6 +236,22 @@ for(i in seq(1:tempData2$m))
 #Correctly pooled C-statistic and 95% CI using Rubin's Rules with logit transformation
 pool_auc(externalROCsValues, externalROCsSEs, nimp = 10, log_auc = T)
 
+#Individual permutation tests for each multiple imputation dataset
+psPermExternal = list()
+set.seed(987)
+for(i in seq(1:tempData2$m))
+{
+  #permutation p value
+  auc_null = NULL
+  for(j in seq (1:10001))
+  {
+    perm = permute(Obs[[i]])
+    auc_null = c(auc_null, roc(predictor = Results[[i]], response = perm, levels=c("No", "Yes"), direction=">")$auc)
+  }
+  psPermExternal[[i]] = (1+sum(auc_null >= externalROCsValues[[i]]))/10001
+}
+psPermExternal
+
 externalCalIntValues = list()
 externalCalIntSEs = list()
 externalCalSlopeValues = list()
@@ -263,7 +272,7 @@ rubin.rules(unlist(externalCalIntValues), unlist(externalCalIntSEs))
 #Correctly pooled Calibration slope and SE
 rubin.rules(unlist(externalCalSlopeValues), unlist(externalCalSlopeSEs))
 
-#for permutation 
+#combined data 
 externalPreds = NULL
 externalOutcomes = NULL
 externalDUP = NULL
@@ -273,28 +282,6 @@ for(i in seq(1:tempData2$m))
   externalOutcomes = c(externalOutcomes, as.character(Obs[[i]]))
   externalDUP = c(externalDUP, DUP[[i]])
 }
-
-#C-statistic for permutation testing
-results_external_roc = roc(
-  predictor = externalPreds,
-  response = as.factor(externalOutcomes),
-  ci = T,
-  levels = c("No", "Yes"),
-  direction = ">"
-)
-results_external_roc
-results_external_auc = results_external_roc$auc
-
-#permutation p value
-set.seed(987)
-auc_null = NULL
-for(i in seq (1:10001))
-{
-  perm = permute(as.factor(externalOutcomes))
-  auc_null = c(auc_null, roc(predictor = externalPreds, response = perm, levels=c("No", "Yes"), direction=">")$auc)
-}
-pPermExternal = (1+sum(auc_null >= results_external_auc))/10001
-pPermExternal
 
 #calibration plot - ignore confidence intervals, use above via Rubin's rules instead
 pdf("figure2.pdf", width = 7, height = 7)

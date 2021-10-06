@@ -296,7 +296,7 @@ for(i in seq (1:10001))
 pPermExternal = (1+sum(auc_null >= results_external_auc))/10001
 pPermExternal
 
-#calibration plot - ignore confidence intervals around c-statistic use above via Rubin's rules instead
+#calibration plot - ignore confidence intervals, use above via Rubin's rules instead
 pdf("figure2.pdf", width = 7, height = 7)
 val.prob.ci.2(p=externalPreds, y=externalOutcomes=="No", g=5, logistic.cal = T, lty.log=9,
               col.log="red", lwd.log=1.5, col.ideal="blue", lwd.ideal=0.5)

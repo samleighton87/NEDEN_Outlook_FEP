@@ -13,4 +13,5 @@ We would like to acknowledge the authors of the following packages which were re
 * https://CRAN.R-project.org/package=mice
 * https://CRAN.R-project.org/package=pmsampsize
 * https://github.com/BavoDC/CalibrationCurves
-* https://github.com/ddsjoberg/dca
+* https://github.com/ddsjoberg/dcurves
+* https://CRAN.R-project.org/package=psfmi

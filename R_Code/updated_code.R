@@ -128,8 +128,10 @@ for(i in seq(1:tempData$m))
 
 #Correctly pooled internal Calibration intercept and SE - should be zero for internal validation
 rubin.rules(unlist(internalCalIntValues), unlist(internalCalIntSEs))
+pool_auc_2(est_auc = internalCalIntValues, est_se = internalCalIntSEs, nimp = 10, log_auc = F)
 #Correctly pooled internal Calibration slope and SE
 rubin.rules(unlist(internalCalSlopeValues), unlist(internalCalSlopeSEs))
+pool_auc_2(est_auc = internalCalSlopeValues, est_se = internalCalSlopeSEs, nimp = 10, log_auc = F)
 
 #combined data 
 internalPreds = NULL
@@ -269,8 +271,10 @@ for(i in seq(1:tempData2$m))
 
 #Correctly pooled Calibration intercept and SE
 rubin.rules(unlist(externalCalIntValues), unlist(externalCalIntSEs))
+pool_auc_2(est_auc = externalCalIntValues, est_se = externalCalIntSEs, nimp = 10, log_auc = F)
 #Correctly pooled Calibration slope and SE
 rubin.rules(unlist(externalCalSlopeValues), unlist(externalCalSlopeSEs))
+pool_auc_2(est_auc = externalCalSlopeValues, est_se = externalCalSlopeSEs, nimp = 10, log_auc = F)
 
 #combined data 
 externalPreds = NULL
@@ -855,4 +859,76 @@ rubin.rules <- function(means, SEs)
   
   rubins = list("rubin_mean" = rubin_mean, "rubin_se" = rubin_se)
   return(rubins)
+}
+
+#amended pool_auc() function https://rdrr.io/cran/psfmi/src/R/pool_auc.R
+#comment out code that binds result between 0 and 1 so can use to pool other performance metrics
+#like citl and slope
+pool_auc_2 <- function(est_auc, 
+                     est_se, 
+                     nimp = 5, 
+                     log_auc=TRUE)
+{
+  
+  RR_se <- function(est, se, nimp){
+    m <- nimp
+    w_auc <-
+      mean(se^2) # within variance
+    b_auc <-
+      var(est) # between variance
+    tv_auc <-
+      w_auc + (1 + (1/m)) * b_auc # total variance
+    se_total <-
+      sqrt(tv_auc)
+    r <- (1 + 1 / m) * (b_auc / w_auc)
+    v <- (m - 1) * (1 + (1/r))^2
+    t <- qt(0.975, v)
+    res <- c(se_total, t)
+    return(res)
+  }
+  
+  est_auc <-
+    unlist(est_auc)
+  est_auc_se <-
+    unlist(est_se)
+  if(length(est_auc) != nimp)
+    stop("Include c-statistic value for each imputed dataset")
+  
+  if(log_auc){
+    est_auc_log <-
+      log(est_auc/(1-est_auc))
+    est_auc_se_log <-
+      est_auc_se / (est_auc * (1-est_auc))
+    
+    se_total <-
+      RR_se(est_auc_log, est_auc_se_log, nimp=nimp) # pooled se
+    
+    # Backtransform
+    inv.auc <- exp(mean(est_auc_log)) /
+      (1 + exp(mean(est_auc_log)))
+    inv.auc.u <- exp(mean(est_auc_log) + (se_total[2]*se_total[1])) /
+      (1 + exp(mean(est_auc_log) + (se_total[2]*se_total[1])))
+    inv.auc.l <- exp(mean(est_auc_log) - (se_total[2]*se_total[1])) /
+      (1 + exp(mean(est_auc_log) - (se_total[2]*se_total[1])))
+    auc_res <- round(matrix(c(inv.auc.l, inv.auc, inv.auc.u),
+                            1, 3, byrow = T), 4)
+    dimnames(auc_res) <- list(c("C-statistic (logit)"),
+                              c("95% Low", "C-statistic", "95% Up"))
+  } else {
+    mean_auc <-
+      mean(est_auc)
+    se_total <-
+      RR_se(est_auc, est_auc_se, nimp=nimp)
+    auc_u <-
+      mean(est_auc) + (se_total[2]*se_total[1])
+    #if(auc_u > 1) auc_u <- 1.00
+    auc_l <- mean(est_auc) - (se_total[2]*se_total[1])
+    #if(auc_l < 0) auc_l <- 0.00
+    auc_res <-
+      round(matrix(c(auc_l, mean_auc, auc_u),
+                   1, 3, byrow = T), 4)
+    dimnames(auc_res) <-
+      list(c("C-statistic"), c("95% Low", "C-statistic", "95% Up"))
+  }
+  return(auc_res)
 }

@@ -4,8 +4,6 @@ This is the R code for our manuscript.
 
 Comments are inline in the code.R and should be easy to follow. Any issues contact the authors.
 
-We also upload a corrected version of Table 1 from the manuscript detailing the final logistic regression nonremission prediction model specification. We now provide mean and standard deviation values to allow the transformation of the predictor variables to Z-scores for their use in the model. This was omitted from the original published paper but is required to apply the model to new patients.
-
 We would like to acknowledge the authors of the following packages which were required for our analysis:
 * https://CRAN.R-project.org/package=doParallel
 * https://CRAN.R-project.org/package=readr
